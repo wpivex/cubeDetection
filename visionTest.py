@@ -6,6 +6,8 @@ import matplotlib.pylab as plt
 import math
 cap = cv2.VideoCapture(0)
 
+m = 0
+b = 0
 
 # checkerboard Dimensions
 cbrow = 6
@@ -161,9 +163,11 @@ def calibrate(img):
         x = np.array(xvals)
         y = np.array(angles)
 
+        global m
+        global b
+
         m = (len(x) * np.sum(x * y) - np.sum(x) * np.sum(y)) / (len(x) * np.sum(x * x) - np.sum(x) * np.sum(x))
         b = (np.sum(y) - m * np.sum(x)) / len(x)
-        print(m, b)
 
         plt.scatter(x, y)
         plt.xlabel("X value of center pixel")
@@ -175,6 +179,9 @@ def calibrate(img):
     else:
         cv2.imshow('img', img)
         cv2.waitKey(30)
+
+def getAngle(xPixel):
+    return (m * xPixel) + b
 
 imageScaled = loadImgFromCam()
 hsvImage = ImgToHSV(imageScaled)
@@ -223,6 +230,7 @@ while(1):
                                                   cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                 print("X: " + str(largestBlob.pt[0]))
                 print("Y: " + str(largestBlob.pt[1]))
+                print("Angle: " + str(getAngle(largestBlob.pt[0])))
                 im_with_keypoints = cv2.circle(im_with_keypoints, (int(largestBlob.pt[0]), int(largestBlob.pt[1])), 5,
                                                (100, 100, 100), 6)
         i = i + 1
