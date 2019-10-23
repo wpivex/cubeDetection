@@ -60,18 +60,19 @@ def initWindows():
     cv2.resizeWindow('sliders',300,400)
 
     # create trackbars for color change
-    cv2.createTrackbar('R1','sliders',0,255,nothing)
-    cv2.createTrackbar('G1','sliders',0,255,nothing)
-    cv2.createTrackbar('B1','sliders',0,255,nothing)
-    cv2.createTrackbar('R2','sliders',0,255,nothing)
-    cv2.createTrackbar('G2','sliders',0,255,nothing)
-    cv2.createTrackbar('B2','sliders',0,255,nothing)
+    cv2.createTrackbar('H1','sliders',0,255,nothing)
+    cv2.createTrackbar('S1','sliders',0,255,nothing)
+    cv2.createTrackbar('V1','sliders',0,255,nothing)
+    cv2.createTrackbar('H2','sliders',0,255,nothing)
+    cv2.createTrackbar('S2','sliders',0,255,nothing)
+    cv2.createTrackbar('V2','sliders',0,255,nothing)
 
     #cube color switches
     cv2.createTrackbar('Purple','sliders',0,1,nothing)
     cv2.createTrackbar('Green', 'sliders', 0, 1, nothing)
     cv2.createTrackbar('Orange', 'sliders', 0, 1, nothing)
-    cv2.createTrackbar('Calibration', 'sliders', 0, 1, nothing)
+    cv2.createTrackbar('Angle Calibration', 'sliders', 0, 1, nothing)
+    cv2.createTrackbar('Color Calibration', 'sliders', 0, 1, nothing)
 
 def makeBoundaryArray(orange1HSV = [],orange2HSV = [],green1HSV = [],green2HSV =[], purple1HSV = [],purple2HSV = []):
     # define the list of boundaries HSV
@@ -86,18 +87,17 @@ def makeBoundaryArray(orange1HSV = [],orange2HSV = [],green1HSV = [],green2HSV =
 
 def manualSliders(hsvImage):
     # get current positions of four trackbars
-    r1 = cv2.getTrackbarPos('R1', 'sliders')
-    g1 = cv2.getTrackbarPos('G1', 'sliders')
-    b1 = cv2.getTrackbarPos('B1', 'sliders')
-    r2 = cv2.getTrackbarPos('R2', 'sliders')
-    g2 = cv2.getTrackbarPos('G2', 'sliders')
-    b2 = cv2.getTrackbarPos('B2', 'sliders')
+    r1 = cv2.getTrackbarPos('H1', 'sliders')
+    g1 = cv2.getTrackbarPos('S1', 'sliders')
+    b1 = cv2.getTrackbarPos('V1', 'sliders')
+    r2 = cv2.getTrackbarPos('H2', 'sliders')
+    g2 = cv2.getTrackbarPos('S2', 'sliders')
+    b2 = cv2.getTrackbarPos('V2', 'sliders')
 
     lower = np.array([r1,g1,b1], dtype = "uint8")
     upper = np.array([r2,g2,b2], dtype = "uint8")
 
     return cv2.inRange(hsvImage, lower, upper)
-
 
 
 def makeMask(hsvImage, lowBound = [], highBound = []):
@@ -112,7 +112,7 @@ def dilateErode(mask):
     dilateMask2 = cv2.dilate(erodedMask, kernel1)
     return dilateMask2
 
-def readSwtiches():
+def readSwitches():
     OR = cv2.getTrackbarPos('Orange', 'sliders')
     GR = cv2.getTrackbarPos('Green', 'sliders')
     PU = cv2.getTrackbarPos('Purple', 'sliders')
@@ -134,7 +134,7 @@ def getBlobParam():
     params.minCircularity = 0.5
     return params
 
-def calibrate(img):
+def angleCalibrate(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Find the chess board corners
@@ -183,16 +183,79 @@ def calibrate(img):
 def getAngle(xPixel):
     return (m * xPixel) + b
 
-imageScaled = loadImgFromCam()
-hsvImage = ImgToHSV(imageScaled)
-initWindows()
-
 orangeLow = [4, 139, 137]
 orangeHigh = [62, 255, 255]
 greenLow = [118, 107, 16]
 greenHigh = [255, 255, 255]
 purpleLow = [55, 107, 16]
 purpleHigh = [97, 255, 255]
+
+firstTime = True
+
+def colorCalibrate(img):
+
+    global orangeLow
+    global orangeHigh
+    global greenLow
+    global greenHigh
+    global purpleLow
+    global purpleHigh
+
+    global firstTime
+
+    colorsToFind = readSwitches()
+    print(np.nonzero(colorsToFind)[0])
+    if len(np.nonzero(colorsToFind)[0]) == 0:
+        print("Pick a color to calibrate")
+    elif len(np.nonzero(colorsToFind)[0]) > 1:
+        print("Don't select more than one color")
+    elif len(np.nonzero(colorsToFind)[0]) == 1:
+        low = [0,0,0]
+        high = [0,0,0]
+        if (np.nonzero(colorsToFind)[0] == 0):
+            # Orange
+            low = orangeLow
+            high = orangeHigh
+        elif (np.nonzero(colorsToFind)[0] == 1):
+            # Green
+            low = greenLow
+            high = greenHigh
+        elif (np.nonzero(colorsToFind)[0][0] == 2):
+            # Purple
+            low = purpleLow
+            high = purpleHigh
+        if (firstTime):
+            cv2.setTrackbarPos('H1', 'sliders', low[0])
+            cv2.setTrackbarPos('S1', 'sliders', low[1])
+            cv2.setTrackbarPos('V1', 'sliders', low[2])
+            cv2.setTrackbarPos('H2', 'sliders', high[0])
+            cv2.setTrackbarPos('S2', 'sliders', high[1])
+            cv2.setTrackbarPos('V2', 'sliders', high[2])
+        
+        h1 = cv2.getTrackbarPos('H1', 'sliders')
+        s1 = cv2.getTrackbarPos('S1', 'sliders')
+        v1 = cv2.getTrackbarPos('V1', 'sliders')
+        h2 = cv2.getTrackbarPos('H2', 'sliders')
+        s2 = cv2.getTrackbarPos('S2', 'sliders')
+        v2 = cv2.getTrackbarPos('V2', 'sliders')
+        
+        if (np.nonzero(colorsToFind)[0] == 0):
+            # Orange
+            orangeLow = [h1,s1,v1]
+            orangeHigh = [h2,s2,v2]
+        elif (np.nonzero(colorsToFind)[0] == 1):
+            # Green
+            greenLow = [h1,s1,v1]
+            greenHigh = [h2,s2,v2]
+        elif (np.nonzero(colorsToFind)[0] == 2):
+            # Purple
+            purpleLow = [h1,s1,v1]
+            purpleHigh = [h2,s2,v2]
+        firstTime = False
+
+imageScaled = loadImgFromCam()
+hsvImage = ImgToHSV(imageScaled)
+initWindows()
 
 boundArray = makeBoundaryArray(orangeLow,orangeHigh,purpleLow,purpleHigh,greenLow,greenHigh)
 
@@ -205,12 +268,17 @@ while(1):
     #imageScaled = loadImg()
     im_with_keypoints = imageScaled
     hsvImage = ImgToHSV(imageScaled)
-    colorsToFind = readSwtiches()
+    colorsToFind = readSwitches()
 
-    if(cv2.getTrackbarPos('Calibration', 'sliders') == 1):
-        calibrate(imageScaled)
+    currentColor = cv2.getTrackbarPos('Color Calibration', 'sliders')
 
-    # finalMask = manualSliders(hsvImage)
+    if(cv2.getTrackbarPos('Angle Calibration', 'sliders') == 1):
+        angleCalibrate(imageScaled)
+
+    if(currentColor == 1):
+        colorCalibrate(imageScaled)
+
+    finalMask = manualSliders(hsvImage)
 
     detector = cv2.SimpleBlobDetector_create(getBlobParam())
     i = 0
@@ -235,7 +303,7 @@ while(1):
                                                (100, 100, 100), 6)
         i = i + 1
 
-    cv2.imshow("images", im_with_keypoints)
+    cv2.imshow("images", finalMask)
 
 
 
