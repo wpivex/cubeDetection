@@ -57,7 +57,7 @@ def ImgToHSV(scaledImg):
 def initWindows():
     # Create a window
     cv2.namedWindow('sliders')
-    cv2.resizeWindow('sliders',300,400)
+    cv2.resizeWindow('sliders',300,500)
 
     # create trackbars for color change
     cv2.createTrackbar('H1','sliders',0,255,nothing)
@@ -204,7 +204,7 @@ def colorCalibrate(img):
     global firstTime
 
     colorsToFind = readSwitches()
-    print(np.nonzero(colorsToFind)[0])
+    # print(np.nonzero(colorsToFind)[0])
     if len(np.nonzero(colorsToFind)[0]) == 0:
         print("Pick a color to calibrate")
     elif len(np.nonzero(colorsToFind)[0]) > 1:
@@ -258,6 +258,7 @@ hsvImage = ImgToHSV(imageScaled)
 initWindows()
 
 boundArray = makeBoundaryArray(orangeLow,orangeHigh,purpleLow,purpleHigh,greenLow,greenHigh)
+maskToUse = ""
 
 while(1):
     k = cv2.waitKey(1) & 0xFF
@@ -272,13 +273,16 @@ while(1):
 
     currentColor = cv2.getTrackbarPos('Color Calibration', 'sliders')
 
+    finalMask = manualSliders(hsvImage)
+
     if(cv2.getTrackbarPos('Angle Calibration', 'sliders') == 1):
         angleCalibrate(imageScaled)
 
     if(currentColor == 1):
         colorCalibrate(imageScaled)
-
-    finalMask = manualSliders(hsvImage)
+        maskToUse = finalMask
+    else:
+        maskToUse = im_with_keypoints
 
     detector = cv2.SimpleBlobDetector_create(getBlobParam())
     i = 0
@@ -303,7 +307,7 @@ while(1):
                                                (100, 100, 100), 6)
         i = i + 1
 
-    cv2.imshow("images", finalMask)
+    cv2.imshow("images", maskToUse)
 
 
 
