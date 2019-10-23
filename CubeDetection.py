@@ -27,6 +27,8 @@ imgpoints = [] # 2d points in image plane.
 
 cap = cv2.VideoCapture(0)
 
+colorData = np.zeros((3, 2, 3))
+
 def nothing(x):
     pass
 
@@ -193,66 +195,16 @@ purpleHigh = [97, 255, 255]
 
 firstTime = True
 
-def colorCalibrate(img):
-
-    global orangeLow
-    global orangeHigh
-    global greenLow
-    global greenHigh
-    global purpleLow
-    global purpleHigh
-
-    global firstTime
+def colorCalibrate():
 
     colorsToFind = readSwitches()
-    # print(np.nonzero(colorsToFind)[0])
     if len(np.nonzero(colorsToFind)[0]) == 0:
         print("Pick a color to calibrate")
     elif len(np.nonzero(colorsToFind)[0]) > 1:
         print("Don't select more than one color")
     elif len(np.nonzero(colorsToFind)[0]) == 1:
-        low = [0,0,0]
-        high = [0,0,0]
-        if (np.nonzero(colorsToFind)[0] == 0):
-            # Orange
-            low = orangeLow
-            high = orangeHigh
-        elif (np.nonzero(colorsToFind)[0] == 1):
-            # Green
-            low = greenLow
-            high = greenHigh
-        elif (np.nonzero(colorsToFind)[0][0] == 2):
-            # Purple
-            low = purpleLow
-            high = purpleHigh
-        if (firstTime):
-            cv2.setTrackbarPos('H1', 'sliders', low[0])
-            cv2.setTrackbarPos('S1', 'sliders', low[1])
-            cv2.setTrackbarPos('V1', 'sliders', low[2])
-            cv2.setTrackbarPos('H2', 'sliders', high[0])
-            cv2.setTrackbarPos('S2', 'sliders', high[1])
-            cv2.setTrackbarPos('V2', 'sliders', high[2])
-        
-        h1 = cv2.getTrackbarPos('H1', 'sliders')
-        s1 = cv2.getTrackbarPos('S1', 'sliders')
-        v1 = cv2.getTrackbarPos('V1', 'sliders')
-        h2 = cv2.getTrackbarPos('H2', 'sliders')
-        s2 = cv2.getTrackbarPos('S2', 'sliders')
-        v2 = cv2.getTrackbarPos('V2', 'sliders')
-        
-        if (np.nonzero(colorsToFind)[0] == 0):
-            # Orange
-            orangeLow = [h1,s1,v1]
-            orangeHigh = [h2,s2,v2]
-        elif (np.nonzero(colorsToFind)[0] == 1):
-            # Green
-            greenLow = [h1,s1,v1]
-            greenHigh = [h2,s2,v2]
-        elif (np.nonzero(colorsToFind)[0] == 2):
-            # Purple
-            purpleLow = [h1,s1,v1]
-            purpleHigh = [h2,s2,v2]
-        firstTime = False
+        saveCurrentSlidersIntoArray(np.nonzero(colorsToFind)[0])
+        saveData(colorData)
 
 def saveData(data):
     # open a file, where you ant to store the data
@@ -276,6 +228,29 @@ def readData():
 
     return data
 
+def saveCurrentSlidersIntoArray(colorNum):
+    h1 = cv2.getTrackbarPos('H1', 'sliders')
+    s1 = cv2.getTrackbarPos('S1', 'sliders')
+    v1 = cv2.getTrackbarPos('V1', 'sliders')
+    h2 = cv2.getTrackbarPos('H2', 'sliders')
+    s2 = cv2.getTrackbarPos('S2', 'sliders')
+    v2 = cv2.getTrackbarPos('V2', 'sliders')
+    colorData[colorNum,0,0] = h1
+    colorData[colorNum,0,1] = s1
+    colorData[colorNum,0,2] = v1
+
+    colorData[colorNum,1,0] = h2
+    colorData[colorNum,1,1] = s2
+    colorData[colorNum,1,2] = v2
+
+def setSlidersFromData(colorNum):
+    colorData = readData()
+    cv2.setTrackbarPos('H1', 'sliders', colorData[0][0][colorNum])
+    cv2.setTrackbarPos('S1', 'sliders', colorData[1][0][colorNum])
+    cv2.setTrackbarPos('V1', 'sliders', colorData[2][0][colorNum])
+    cv2.setTrackbarPos('H2', 'sliders', colorData[0][1][colorNum])
+    cv2.setTrackbarPos('S2', 'sliders', colorData[1][1][colorNum])
+    cv2.setTrackbarPos('V2', 'sliders', colorData[2][1][colorNum])
 
 imageScaled = loadImgFromCam()
 hsvImage = ImgToHSV(imageScaled)
@@ -288,6 +263,16 @@ while(1):
     k = cv2.waitKey(1) & 0xFF
     if k == 27:
         break
+    if k == 83:
+        #[S]ave
+        print("Wrote")
+        colorCalibrate()
+    if k == 82:
+        #[R]ead
+        print("Read")
+        colorData = readData()
+        setSlidersFromData(np.nonzero(readSwitches())[0])
+        print(colorData)
 
     imageScaled = loadImgFromCam()
     #imageScaled = loadImg()
@@ -301,7 +286,8 @@ while(1):
         angleCalibrate(imageScaled)
 
     if(currentColor == 1): #if color cal
-        colorCalibrate(imageScaled)
+        #colorCalibrate(imageScaled)
+        readData()
         maskToUse = manualSliders(hsvImage)
     else:
         maskToUse = im_with_keypoints
@@ -322,9 +308,9 @@ while(1):
             if largestBlob != 0:
                 im_with_keypoints = cv2.drawKeypoints(im_with_keypoints, [largestBlob], np.array([]), (0, 0, 255),
                                                   cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                print("X: " + str(largestBlob.pt[0]))
-                print("Y: " + str(largestBlob.pt[1]))
-                print("Angle: " + str(getAngle(largestBlob.pt[0])))
+                #print("X: " + str(largestBlob.pt[0]))
+                #print("Y: " + str(largestBlob.pt[1]))
+                #print("Angle: " + str(getAngle(largestBlob.pt[0])))
                 im_with_keypoints = cv2.circle(im_with_keypoints, (int(largestBlob.pt[0]), int(largestBlob.pt[1])), 5,
                                                (100, 100, 100), 6)
         i = i + 1
