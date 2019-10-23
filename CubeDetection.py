@@ -1,4 +1,5 @@
 # import the necessary packages
+import pickle
 import numpy as np
 import argparse
 import cv2
@@ -253,6 +254,29 @@ def colorCalibrate(img):
             purpleHigh = [h2,s2,v2]
         firstTime = False
 
+def saveData(data):
+    # open a file, where you ant to store the data
+    file = open('important', 'wb')
+
+    # dump information to that file
+    pickle.dump(data, file)
+
+    # close the file
+    file.close()
+
+def readData():
+    # open a file, where you stored the pickled data
+    file = open('important', 'rb')
+
+    # dump information to that file
+    data = pickle.load(file)
+
+    # close the file
+    file.close()
+
+    return data
+
+
 imageScaled = loadImgFromCam()
 hsvImage = ImgToHSV(imageScaled)
 initWindows()
@@ -273,14 +297,12 @@ while(1):
 
     currentColor = cv2.getTrackbarPos('Color Calibration', 'sliders')
 
-    finalMask = manualSliders(hsvImage)
-
     if(cv2.getTrackbarPos('Angle Calibration', 'sliders') == 1):
         angleCalibrate(imageScaled)
 
-    if(currentColor == 1):
+    if(currentColor == 1): #if color cal
         colorCalibrate(imageScaled)
-        maskToUse = finalMask
+        maskToUse = manualSliders(hsvImage)
     else:
         maskToUse = im_with_keypoints
 
