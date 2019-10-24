@@ -74,8 +74,8 @@ def initWindows():
     cv2.createTrackbar('Purple','sliders',0,1,nothing)
     cv2.createTrackbar('Green', 'sliders', 0, 1, nothing)
     cv2.createTrackbar('Orange', 'sliders', 0, 1, nothing)
-    cv2.createTrackbar('Angle Calibration', 'sliders', 0, 1, nothing)
-    cv2.createTrackbar('Color Calibration', 'sliders', 0, 1, nothing)
+    cv2.createTrackbar('Angle Cal', 'sliders', 0, 1, nothing)
+    cv2.createTrackbar('Color Cal', 'sliders', 0, 1, nothing)
 
 def makeBoundaryArray(orange1HSV = [],orange2HSV = [],green1HSV = [],green2HSV =[], purple1HSV = [],purple2HSV = []):
     # define the list of boundaries HSV
@@ -106,7 +106,6 @@ def manualSliders(hsvImage):
 def makeMask(hsvImage, lowBound = [], highBound = []):
     return cv2.inRange(hsvImage, lowBound, highBound)
 
-
 def dilateErode(mask):
     kernel = np.ones((25, 25), np.uint8)
     kernel1 = np.ones((10, 10), np.uint8)
@@ -115,13 +114,23 @@ def dilateErode(mask):
     dilateMask2 = cv2.dilate(erodedMask, kernel1)
     return dilateMask2
 
-def readSwitches():
+def selectedColor(): #return selected color
+    # 0 -> Or / 1 -> Gr / 2 -> Pu
     OR = cv2.getTrackbarPos('Orange', 'sliders')
     GR = cv2.getTrackbarPos('Green', 'sliders')
     PU = cv2.getTrackbarPos('Purple', 'sliders')
-    return np.array([OR,GR,PU], dtype="uint8")
 
-def getBlobParam():
+    colorSwitchArray = np.array([OR,GR,PU], dtype="uint8")
+
+    if len(np.nonzero(colorSwitchArray)[0]) == 0:
+        print("Pick a color to calibrate")
+    elif len(np.nonzero(colorSwitchArray)[0]) > 1:
+        print("Don't select more than one color")
+    elif len(np.nonzero(colorSwitchArray)[0]) == 1:
+        return np.nonzero(colorSwitchArray)[0]
+    return 0
+
+def getBlobParam(): #simple blobdector params
     params = cv2.SimpleBlobDetector_Params()
     params.filterByInertia = True
     params.minInertiaRatio = 0.1
@@ -195,17 +204,6 @@ purpleHigh = [97, 255, 255]
 
 firstTime = True
 
-def colorCalibrate():
-
-    colorsToFind = readSwitches()
-    if len(np.nonzero(colorsToFind)[0]) == 0:
-        print("Pick a color to calibrate")
-    elif len(np.nonzero(colorsToFind)[0]) > 1:
-        print("Don't select more than one color")
-    elif len(np.nonzero(colorsToFind)[0]) == 1:
-        saveCurrentSlidersIntoArray(np.nonzero(colorsToFind)[0])
-        saveData(colorData)
-
 def saveData(data):
     # open a file, where you ant to store the data
     file = open('important', 'wb')
@@ -244,20 +242,31 @@ def saveCurrentSlidersIntoArray(colorNum):
     colorData[colorNum,1,2] = v2
 
 def setSlidersFromData(colorNum):
-    colorData = readData()
-    cv2.setTrackbarPos('H1', 'sliders', colorData[0][0][colorNum])
-    cv2.setTrackbarPos('S1', 'sliders', colorData[1][0][colorNum])
-    cv2.setTrackbarPos('V1', 'sliders', colorData[2][0][colorNum])
-    cv2.setTrackbarPos('H2', 'sliders', colorData[0][1][colorNum])
-    cv2.setTrackbarPos('S2', 'sliders', colorData[1][1][colorNum])
-    cv2.setTrackbarPos('V2', 'sliders', colorData[2][1][colorNum])
+    colorData = readData().astype(int)
+    cv2.setTrackbarPos('H1', 'sliders', colorData[colorNum,0,0])
+    cv2.setTrackbarPos('S1', 'sliders', colorData[colorNum,0,1])
+    cv2.setTrackbarPos('V1', 'sliders', colorData[colorNum,0,2])
+    cv2.setTrackbarPos('H2', 'sliders', colorData[colorNum,1,0])
+    cv2.setTrackbarPos('S2', 'sliders', colorData[colorNum,1,1])
+    cv2.setTrackbarPos('V2', 'sliders', colorData[colorNum,1,2])
 
-imageScaled = loadImgFromCam()
-hsvImage = ImgToHSV(imageScaled)
+
+#use selectedColor() to get current color code
+#this is only for the for loop
+def getColorSwitchArray():
+    OR = cv2.getTrackbarPos('Orange', 'sliders')
+    GR = cv2.getTrackbarPos('Green', 'sliders')
+    PU = cv2.getTrackbarPos('Purple', 'sliders')
+    return np.array([OR, GR, PU], dtype="uint8")
+
+
+#load previous calibration data and init things
 initWindows()
+colorData = readData()
+setSlidersFromData(selectedColor())
+detector = cv2.SimpleBlobDetector_create(getBlobParam())
 
-boundArray = makeBoundaryArray(orangeLow,orangeHigh,purpleLow,purpleHigh,greenLow,greenHigh)
-maskToUse = ""
+screenOutput = "" #image to output
 
 while(1):
     k = cv2.waitKey(1) & 0xFF
@@ -266,37 +275,27 @@ while(1):
     if k == 83:
         #[S]ave
         print("Wrote")
-        colorCalibrate()
+        saveCurrentSlidersIntoArray(selectedColor())
+        saveData(colorData)
     if k == 82:
         #[R]ead
         print("Read")
+        setSlidersFromData(selectedColor())
         colorData = readData()
-        setSlidersFromData(np.nonzero(readSwitches())[0])
         print(colorData)
 
+    #process image live
     imageScaled = loadImgFromCam()
     #imageScaled = loadImg()
     im_with_keypoints = imageScaled
     hsvImage = ImgToHSV(imageScaled)
-    colorsToFind = readSwitches()
 
-    currentColor = cv2.getTrackbarPos('Color Calibration', 'sliders')
-
-    if(cv2.getTrackbarPos('Angle Calibration', 'sliders') == 1):
-        angleCalibrate(imageScaled)
-
-    if(currentColor == 1): #if color cal
-        #colorCalibrate(imageScaled)
-        readData()
-        maskToUse = manualSliders(hsvImage)
-    else:
-        maskToUse = im_with_keypoints
-
-    detector = cv2.SimpleBlobDetector_create(getBlobParam())
-    i = 0
-    for color in colorsToFind:
+    j = 0
+    #for each slider
+    for color in getColorSwitchArray():
+        #if color switch is on find keypoins and add dots
         if color == 1:
-            finalMask = dilateErode(makeMask(hsvImage, boundArray[i][0], boundArray[i][1]))
+            finalMask = dilateErode(makeMask(hsvImage, colorData[j,0], colorData[j,1]))
             keypoints = detector.detect(finalMask)
             largestBlob = 0
             for keypoint in keypoints:
@@ -313,9 +312,20 @@ while(1):
                 #print("Angle: " + str(getAngle(largestBlob.pt[0])))
                 im_with_keypoints = cv2.circle(im_with_keypoints, (int(largestBlob.pt[0]), int(largestBlob.pt[1])), 5,
                                                (100, 100, 100), 6)
-        i = i + 1
+        j = j + 1
 
-    cv2.imshow("images", maskToUse)
+    #COLOR DATA REFRENCE:
+    # [COLORNUM][LOW/HIGH][H,S,V]
+    if(cv2.getTrackbarPos('Color Calibration', 'sliders') == 1): #if color cal
+        #get the keypoint image for selected color and mask with loaded HSV vals
+        screenOutput = cv2.bitwise_and(im_with_keypoints, im_with_keypoints, mask=manualSliders(hsvImage))
+    elif(cv2.getTrackbarPos('Angle Calibration', 'sliders') == 1): #if angle cal
+        angleCalibrate(imageScaled) #This is not set up yet
+    else: #standard display mode
+        #add keypoints with currently active color switches
+        screenOutput = im_with_keypoints
+
+    cv2.imshow("images", screenOutput)
 
 
 
