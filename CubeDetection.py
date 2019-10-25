@@ -316,10 +316,10 @@ while(1):
 
     #COLOR DATA REFRENCE:
     # [COLORNUM][LOW/HIGH][H,S,V]
-    if(cv2.getTrackbarPos('Color Calibration', 'sliders') == 1): #if color cal
+    if(cv2.getTrackbarPos('Color Cal', 'sliders') == 1): #if color cal
         #get the keypoint image for selected color and mask with loaded HSV vals
         screenOutput = cv2.bitwise_and(im_with_keypoints, im_with_keypoints, mask=manualSliders(hsvImage))
-    elif(cv2.getTrackbarPos('Angle Calibration', 'sliders') == 1): #if angle cal
+    elif(cv2.getTrackbarPos('Angle Cal', 'sliders') == 1): #if angle cal
         angleCalibrate(imageScaled) #This is not set up yet
     else: #standard display mode
         #add keypoints with currently active color switches
